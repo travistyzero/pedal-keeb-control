@@ -20,10 +20,14 @@ pub struct KeymappClient {
 }
 
 impl KeymappClient {
-    pub async fn new(rx: Receiver<PedalPosition>) -> Result<Self> {
-        let connector = service_fn(async |_: Uri| {
-            let stream = UnixStream::connect(Path::new("/home/travis/.config/.keymapp/keymapp.sock")).await?;
-            Ok::<TokioIo<UnixStream>, anyhow::Error>(TokioIo::new(stream))
+    pub async fn new(rx: Receiver<PedalPosition>, keymapp_socket: String) -> Result<Self> {
+
+        let connector = service_fn(move |_: Uri| {
+            let socket = keymapp_socket.clone();
+            async move {
+                let stream = UnixStream::connect(Path::new(&socket)).await?;
+                Ok::<TokioIo<UnixStream>, anyhow::Error>(TokioIo::new(stream))
+            }
         });
 
         let channel = Endpoint::try_from("http://[::]:50051")
