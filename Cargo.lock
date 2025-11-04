@@ -443,14 +443,15 @@ name = "pedal-keeb-control"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "hyper-util",
  "log",
  "prost",
  "rusb",
  "tokio",
  "tonic",
- "tonic-build",
  "tonic-prost",
  "tonic-prost-build",
+ "tower",
 ]
 
 [[package]]
