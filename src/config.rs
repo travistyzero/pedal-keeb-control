@@ -19,7 +19,7 @@ impl Default for Config {
 #[cfg(target_os="linux")]
 fn get_keymapp_socket_location() -> String {
     let home = std::env::var("HOME").expect("HOME environment variable not set");
-    std::path::PathBuf::from(&home).join("/.config/.keymapp/keymapp.socket").to_string_lossy().to_string()
+    std::path::PathBuf::from(&home).join(".config/.keymapp/keymapp.sock").to_string_lossy().to_string()
 }
 
 #[cfg(target_os="macos")]
