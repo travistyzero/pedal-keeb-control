@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+use std::io::{stdout, Write};
 use std::ops::Not;
 use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
@@ -8,6 +10,15 @@ use tokio::sync::mpsc::Sender;
 pub enum PedalPosition {
     Down,
     Up
+}
+
+impl Display for PedalPosition {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PedalPosition::Down => write!(f, "↓"),
+            PedalPosition::Up => write!(f, "↑"),
+        }
+    }
 }
 
 impl Not for PedalPosition {
@@ -77,7 +88,8 @@ impl Pedal {
                 Err(rusb::Error::Timeout) => {},
                 Ok(_) => {
                     self.pedal_position = !self.pedal_position;
-                    println!("Pedal position: {:?}",  self.pedal_position);
+                    print!("{}",  self.pedal_position);
+                    stdout().flush().context("Failed to flush stdout")?;
                     self.tx.send(self.pedal_position).await.context("Failed to send Pedal position")?;
                 },
                 Err(e) => {
