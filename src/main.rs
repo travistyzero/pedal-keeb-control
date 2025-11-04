@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
     let (tx, rx) = mpsc::channel::<PedalPosition>(10);
 
     let mut producer = Pedal::new(tx, config.pedal_device_config)?;
-    let mut consumer = KeymappClient::new(rx, config.keymapp_socket).await?;
+    let mut consumer = KeymappClient::new(rx, config.keymapp_socket, config.mouse_layer).await?;
 
     let producer_task = tokio::spawn(async move {
        producer.run().await

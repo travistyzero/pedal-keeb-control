@@ -2,6 +2,7 @@ use crate::pedal::PedalUsbConfig;
 
 pub struct Config {
     pub keymapp_socket: String,
+    pub mouse_layer: u8,
     pub pedal_device_config: PedalUsbConfig,
 }
 
@@ -11,6 +12,7 @@ impl Default for Config {
 
             Config {
                 keymapp_socket,
+                mouse_layer: 2,
                 pedal_device_config: Default::default(),
             }
     }

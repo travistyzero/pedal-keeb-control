@@ -17,10 +17,11 @@ pub mod keymapp {
 pub struct KeymappClient {
     rx: Receiver<PedalPosition>,
     client: KeyboardServiceClient<Channel>,
+    mouse_layer: u8,
 }
 
 impl KeymappClient {
-    pub async fn new(rx: Receiver<PedalPosition>, keymapp_socket: String) -> Result<Self> {
+    pub async fn new(rx: Receiver<PedalPosition>, keymapp_socket: String, mouse_layer: u8) -> Result<Self> {
 
         let connector = service_fn(move |_: Uri| {
             let socket = keymapp_socket.clone();
@@ -38,7 +39,7 @@ impl KeymappClient {
 
         let client = KeyboardServiceClient::new(channel);
 
-        Ok(Self { rx, client })
+        Ok(Self { rx, client, mouse_layer })
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -51,11 +52,11 @@ impl KeymappClient {
                 Some(pedal_position) => {
                     match pedal_position {
                         PedalPosition::Down => {
-                            let req = Request::new(SetLayerRequest { layer: 2 });
+                            let req = Request::new(SetLayerRequest { layer: self.mouse_layer as i32 });
                             self.client.set_layer(req).await.context("Failed to set layer")?;
                         }
                         PedalPosition::Up => {
-                            let req = Request::new(SetLayerRequest{ layer: 2 });
+                            let req = Request::new(SetLayerRequest{ layer: self.mouse_layer as i32 });
                             self.client.unset_layer(req).await.context("Failed to unset layer")?;
                         }
                     }
