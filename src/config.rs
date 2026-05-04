@@ -27,5 +27,5 @@ fn get_keymapp_socket_location() -> String {
 #[cfg(target_os="macos")]
 fn get_keymapp_socket_location() -> String {
     let home = std::env::var("HOME").expect("HOME environment variable not set");
-    std::path::PathBuf::from(&home).join("Library/Containers/io.zsa.keymapp/Data/Library/Application Support/.keymapp/keymapp.sock").to_string_lossy().to_string()
+    std::path::PathBuf::from(&home).join("Library/Application Support/.keymapp/keymapp.sock").to_string_lossy().to_string()
 }
