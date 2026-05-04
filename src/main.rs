@@ -26,6 +26,8 @@ async fn main() -> Result<()> {
         consumer.run().await
     });
 
+    println!("Ready");
+
     tokio::try_join!(producer_task, consumer_task).map(|_| ())?;
 
     println!("Done");
