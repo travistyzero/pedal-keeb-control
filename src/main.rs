@@ -18,17 +18,7 @@ async fn main() -> Result<()> {
     let mut producer = Pedal::new(tx, config.pedal_device_config)?;
     let mut consumer = KeymappClient::new(rx, config.keymapp_socket, config.mouse_layer).await?;
 
-    let producer_task = tokio::spawn(async move {
-       producer.run().await
-    });
-
-    let consumer_task = tokio::spawn(async move {
-        consumer.run().await
-    });
-
-    println!("Ready");
-
-    tokio::try_join!(producer_task, consumer_task).map(|_| ())?;
+    tokio::try_join!(producer.run(), consumer.run())?;
 
     println!("Done");
 
