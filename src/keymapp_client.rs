@@ -1,14 +1,14 @@
+use crate::keymapp_client::keymapp::SetLayerRequest;
 use crate::pedal::PedalPosition;
 use anyhow::{Context, Result};
+use hyper_util::rt::TokioIo;
 use keymapp::keyboard_service_client::KeyboardServiceClient;
 use std::path::Path;
-use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tokio::sync::mpsc::Receiver;
 use tonic::Request;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
-use crate::keymapp_client::keymapp::{SetLayerRequest};
 
 pub mod keymapp {
     tonic::include_proto!("api");
@@ -21,8 +21,11 @@ pub struct KeymappClient {
 }
 
 impl KeymappClient {
-    pub async fn new(rx: Receiver<PedalPosition>, keymapp_socket: String, mouse_layer: u8) -> Result<Self> {
-
+    pub async fn new(
+        rx: Receiver<PedalPosition>,
+        keymapp_socket: String,
+        mouse_layer: u8,
+    ) -> Result<Self> {
         let connector = service_fn(move |_: Uri| {
             let socket = keymapp_socket.clone();
             async move {
@@ -39,7 +42,11 @@ impl KeymappClient {
 
         let client = KeyboardServiceClient::new(channel);
 
-        Ok(Self { rx, client, mouse_layer })
+        Ok(Self {
+            rx,
+            client,
+            mouse_layer,
+        })
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -49,18 +56,25 @@ impl KeymappClient {
                     println!("Channel closed");
                     return Ok(());
                 }
-                Some(pedal_position) => {
-                    match pedal_position {
-                        PedalPosition::Down => {
-                            let req = Request::new(SetLayerRequest { layer: self.mouse_layer as i32 });
-                            self.client.set_layer(req).await.context("Failed to set layer")?;
-                        }
-                        PedalPosition::Up => {
-                            let req = Request::new(SetLayerRequest{ layer: self.mouse_layer as i32 });
-                            self.client.unset_layer(req).await.context("Failed to unset layer")?;
-                        }
-                    }
 
+                Some(PedalPosition::Down) => {
+                    let req = Request::new(SetLayerRequest {
+                        layer: self.mouse_layer as i32,
+                    });
+                    self.client
+                        .set_layer(req)
+                        .await
+                        .context("Failed to set layer")?;
+                }
+
+                Some(PedalPosition::Up) => {
+                    let req = Request::new(SetLayerRequest {
+                        layer: self.mouse_layer as i32,
+                    });
+                    self.client
+                        .unset_layer(req)
+                        .await
+                        .context("Failed to unset layer")?;
                 }
             };
         }
