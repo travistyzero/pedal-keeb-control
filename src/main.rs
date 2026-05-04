@@ -20,7 +20,5 @@ async fn main() -> Result<()> {
 
     tokio::try_join!(producer.run(), consumer.run())?;
 
-    println!("Done");
-
     Ok(())
 }
