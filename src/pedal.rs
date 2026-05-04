@@ -86,12 +86,14 @@ impl Pedal {
 
             match read_result {
                 Err(rusb::Error::Timeout) => {},
+
                 Ok(_) => {
                     self.pedal_position = !self.pedal_position;
                     print!("{}",  self.pedal_position);
                     stdout().flush().context("Failed to flush stdout")?;
                     self.tx.send(self.pedal_position).await.context("Failed to send Pedal position")?;
                 },
+
                 Err(e) => {
                     return Err(e).context(anyhow!("Failed to read from device"));
                 }
