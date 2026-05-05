@@ -1,15 +1,14 @@
-use std::fmt::{Display, Formatter};
-use std::io::{stdout, Write};
-use std::ops::Not;
-use std::time::Duration;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use rusb::{DeviceHandle, GlobalContext};
+use std::fmt::{Display, Formatter};
+use std::io::{Write, stdout};
+use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Copy, Clone)]
 pub enum PedalPosition {
     Down,
-    Up
+    Up,
 }
 
 impl Display for PedalPosition {
@@ -21,32 +20,23 @@ impl Display for PedalPosition {
     }
 }
 
-impl Not for PedalPosition {
-    type Output = PedalPosition;
-
-    fn not(self) -> Self::Output {
-        match self {
-            PedalPosition::Down => PedalPosition::Up,
-            PedalPosition::Up => PedalPosition::Down
-        }
-    }
-}
-
 pub struct Pedal {
     pedal_position: PedalPosition,
     device_handle: DeviceHandle<GlobalContext>,
-    read_timeout:Duration,
+    read_timeout: Duration,
     poll_interval: Duration,
     run: bool,
     tx: Sender<PedalPosition>,
-    usb_config: PedalUsbConfig
+    usb_config: PedalUsbConfig,
 }
 
 pub struct PedalUsbConfig {
     pub vendor_id: u16,
     pub product_id: u16,
     pub interface: u8,
-    pub interrupt: u8
+    pub interrupt: u8,
+    pub position_mask: u8,
+    pub position_byte: usize,
 }
 
 impl Default for PedalUsbConfig {
@@ -56,15 +46,23 @@ impl Default for PedalUsbConfig {
             product_id: 0xb001,
             interface: 0x00,
             interrupt: 0x81,
+            position_mask: 0x5,
+            position_byte: 3,
         }
     }
 }
 
 impl Pedal {
     pub fn new(tx: Sender<PedalPosition>, usb_config: PedalUsbConfig) -> Result<Self> {
-        let device_handle = rusb::open_device_with_vid_pid(usb_config.vendor_id, usb_config.product_id).ok_or(anyhow!("Failed to open device"))?;
-        device_handle.set_auto_detach_kernel_driver(true).context(anyhow!("Failed to auto detach kernel driver"))?;
-        device_handle.claim_interface(usb_config.interface).context(anyhow!("Failed to claim interface"))?;
+        let device_handle =
+            rusb::open_device_with_vid_pid(usb_config.vendor_id, usb_config.product_id)
+                .ok_or(anyhow!("Failed to open device"))?;
+        device_handle
+            .set_auto_detach_kernel_driver(true)
+            .context(anyhow!("Failed to auto detach kernel driver"))?;
+        device_handle
+            .claim_interface(usb_config.interface)
+            .context(anyhow!("Failed to claim interface"))?;
 
         Ok(Pedal {
             pedal_position: PedalPosition::Up,
@@ -73,26 +71,41 @@ impl Pedal {
             poll_interval: Duration::from_millis(80),
             run: false,
             tx,
-            usb_config
+            usb_config,
         })
     }
 
     pub async fn run(&mut self) -> Result<()> {
         self.run = true;
-        let mut buf = [0u8; 128];
+        let mut buf = [0u8; 9];
 
         while self.run {
-            let  read_result = self.device_handle.read_interrupt(self.usb_config.interrupt, &mut buf, self.read_timeout);
+            let read_result = self.device_handle.read_interrupt(
+                self.usb_config.interrupt,
+                &mut buf,
+                self.read_timeout,
+            );
 
             match read_result {
-                Err(rusb::Error::Timeout) => {},
+                Err(rusb::Error::Timeout) => {}
 
                 Ok(_) => {
-                    self.pedal_position = !self.pedal_position;
-                    print!("{}",  self.pedal_position);
+                    let is_down =
+                        buf[self.usb_config.position_byte] & self.usb_config.position_mask != 0;
+                    self.pedal_position = if is_down {
+                        PedalPosition::Down
+                    } else {
+                        PedalPosition::Up
+                    };
+
+                    print!("{}", self.pedal_position);
                     stdout().flush().context("Failed to flush stdout")?;
-                    self.tx.send(self.pedal_position).await.context("Failed to send Pedal position")?;
-                },
+
+                    self.tx
+                        .send(self.pedal_position)
+                        .await
+                        .context("Failed to send Pedal position")?;
+                }
 
                 Err(e) => {
                     return Err(e).context(anyhow!("Failed to read from device"));
@@ -106,6 +119,4 @@ impl Pedal {
 
         Ok(())
     }
-
-
 }
